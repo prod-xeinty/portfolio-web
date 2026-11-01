@@ -1,8 +1,43 @@
-name: Generate concepts 2026-11-01
+name: Generate three demo concepts 2026-11-01
 on:
+  push:
+    paths:
+      - '.github/workflows/generate-concepts-20261101.yml'
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
-  placeholder:
+  generate:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'Awaiting generated content'
+      - uses: actions/checkout@v4
+      - name: Unpack verified HTML files
+        run: |
+          python3 - <<'PY'
+          import base64, bz2, io, tarfile
+          from pathlib import Path
+          encoded = Path("scripts/concepts-20261101.b85").read_text().strip()
+          archive = bz2.decompress(base64.b85decode(encoded))
+          expected = {
+              "dalayar-vladimir-concept-20261101/index.html",
+              "masterskaya-zelenaya-ivanovo-concept-20261101/index.html",
+              "clean32-bryansk-concept-20261101/index.html",
+          }
+          with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as tar:
+              members = tar.getmembers()
+              assert {m.name for m in members} == expected, "Unexpected archive paths"
+              assert all(m.isfile() for m in members), "Non-file archive member"
+              for member in members:
+                  target = Path(member.name)
+                  assert not target.exists(), f"Refusing to replace {target}"
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(tar.extractfile(member).read())
+          print("Created", len(expected), "independent HTML pages")
+          PY
+      - name: Commit only new concept directories
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dalayar-vladimir-concept-20261101/index.html masterskaya-zelenaya-ivanovo-concept-20261101/index.html clean32-bryansk-concept-20261101/index.html
+          git commit -m "Publish three original demo landing pages 2026-11-01"
+          git push origin HEAD:main
