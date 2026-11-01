@@ -1,0 +1,8 @@
+name: Generate concepts 2026-11-01
+on:
+  workflow_dispatch:
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Awaiting generated content'
